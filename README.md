@@ -7,6 +7,8 @@
 [![Electron](https://img.shields.io/badge/Electron-28-47848F.svg)](https://www.electronjs.org/)
 [![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](https://github.com/)
 
+*中文文档 → [README_CN.md](README_CN.md)*
+
 <p align="center">
   <img src="images/en.png" alt="AI Serial Debug Tool Screenshot" width="100%">
 </p>
