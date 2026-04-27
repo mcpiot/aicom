@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI串口调试工具 — 使用手册</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <style>
+    :root {
+      --prism: linear-gradient(135deg, #FFB868 0%, #FDEB84 25%, #A7F9FF 50%, #887DFF 75%, #FF68D6 100%);
+      --prism-h: linear-gradient(90deg, #FFB868 0%, #FDEB84 25%, #A7F9FF 50%, #887DFF 75%, #FF68D6 100%);
+      --purple: #887DFF;
+      --cyan: #A7F9FF;
+      --bg: #FAFAFC;
+      --surface: rgba(255,255,255,0.78);
+      --border: rgba(255,255,255,0.65);
+      --text: #0A0A0C;
+      --muted: #6B7280;
+      --subtle: #9CA3AF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── Background orbs ── */
+    .bg-orbs {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.45;
+      animation: float 10s ease-in-out infinite;
+    }
+    .orb-1 { width: 520px; height: 520px; background: radial-gradient(circle, #887DFF55, transparent 70%); top: -140px; right: -100px; animation-delay: 0s; }
+    .orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, #A7F9FF55, transparent 70%); bottom: 10%; left: -80px; animation-delay: -4s; }
+    .orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, #FFB86855, transparent 70%); top: 50%; right: 15%; animation-delay: -7s; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+
+    /* ── Layout ── */
+    .page-wrapper { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Top nav ── */
+    .top-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(250,250,252,0.82);
+      backdrop-filter: blur(24px) saturate(1.8);
+      border-bottom: 1px solid rgba(255,255,255,0.6);
+      box-shadow: 0 1px 0 rgba(10,10,12,0.04);
+      padding: 0 24px;
+    }
+    .nav-inner {
+      max-width: 960px; margin: 0 auto;
+      display: flex; align-items: center; gap: 8px; height: 56px;
+    }
+    .nav-logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700; font-size: 16px; color: var(--text);
+      display: flex; align-items: center; gap: 8px; margin-right: auto;
+      text-decoration: none;
+    }
+    .nav-logo-badge {
+      height: 26px; padding: 0 10px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+      display: flex; align-items: center;
+      box-shadow: 0 2px 8px rgba(136,125,255,0.12);
+      position: relative; overflow: hidden;
+    }
+    .nav-logo-badge::before {
+      content: ''; position: absolute; inset: -1px; border-radius: inherit;
+      padding: 1px; background: var(--prism);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0.6;
+    }
+    .nav-link {
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      text-decoration: none; padding: 6px 12px; border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .nav-link:hover { background: rgba(136,125,255,0.08); color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 72px 0 48px;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 999px; padding: 6px 16px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+      color: var(--muted); margin-bottom: 24px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 2px 12px rgba(136,125,255,0.08);
+    }
+    .hero-eyebrow-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--prism);
+      background-size: 100%;
+    }
+    .hero-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 700; line-height: 1.15;
+      letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+    .hero-title .gradient-text {
+      background: var(--prism); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-desc {
+      font-size: 17px; color: var(--muted); max-width: 560px;
+      margin: 0 auto 40px; line-height: 1.75;
+    }
+    .hero-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .hero-tag {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 999px; padding: 5px 14px;
+      font-size: 12px; font-weight: 500; color: var(--muted);
+      backdrop-filter: blur(8px);
+    }
+
+    /* ── TOC ── */
+    .toc-card {
+      background: var(--surface); backdrop-filter: blur(20px) saturate(1.6);
+      border: 1px solid var(--border); border-radius: 20px;
+      padding: 28px 32px; margin-bottom: 48px;
+      box-shadow: 0 4px 24px rgba(10,10,12,0.05);
+      position: relative; overflow: hidden;
+    }
+    .toc-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--prism-h);
+    }
+    .toc-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px; font-weight: 600; letter-spacing: 0.06em;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 16px;
+    }
+    .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+    .toc-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 10px;
+      text-decoration: none; color: var(--text); font-size: 13px; font-weight: 500;
+      transition: all 0.2s;
+    }
+    .toc-item:hover { background: rgba(136,125,255,0.07); color: var(--purple); }
+    .toc-num {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: rgba(136,125,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--purple); flex-shrink: 0;
+    }
+
+    /* ── Section ── */
+    .section { margin-bottom: 64px; }
+    .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+    .section-num {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px;
+      color: white; background: linear-gradient(135deg, #887DFF, #A7F9FF);
+      box-shadow: 0 4px 12px rgba(136,125,255,0.3);
+    }
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); backdrop-filter: blur(20px) saturate(1.6);
+      border: 1px solid var(--border); border-radius: 18px;
+      padding: 24px 28px; margin-bottom: 16px;
+      box-shadow: 0 4px 24px rgba(10,10,12,0.04);
+      position: relative; overflow: hidden;
+      transition: box-shadow 0.3s;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2.5px;
+      background: var(--prism-h); opacity: 0.7;
+    }
+    .card:hover { box-shadow: 0 8px 32px rgba(136,125,255,0.1); }
+    .card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px; font-weight: 700; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: rgba(136,125,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .card p { font-size: 14px; color: #374151; line-height: 1.75; }
+    .card p + p { margin-top: 8px; }
+
+    /* ── Feature grid ── */
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) { .feature-grid { grid-template-columns: 1fr; } }
+
+    /* ── Param table ── */
+    .param-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .param-table th {
+      text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+      border-bottom: 1px solid rgba(10,10,12,0.06);
+    }
+    .param-table td { padding: 10px 14px; border-bottom: 1px solid rgba(10,10,12,0.04); color: #374151; vertical-align: top; }
+    .param-table tr:last-child td { border-bottom: none; }
+    .param-table tr:hover td { background: rgba(136,125,255,0.03); }
+    .param-name {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500;
+      color: var(--purple); background: rgba(136,125,255,0.08);
+      padding: 2px 8px; border-radius: 5px; white-space: nowrap;
+    }
+
+    /* ── Step list ── */
+    .steps { display: flex; flex-direction: column; gap: 12px; }
+    .step { display: flex; gap: 14px; align-items: flex-start; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      background: var(--prism); display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: white;
+      box-shadow: 0 2px 8px rgba(136,125,255,0.25);
+    }
+    .step-body { padding-top: 4px; font-size: 14px; color: #374151; line-height: 1.7; }
+    .step-body strong { color: var(--text); }
+
+    /* ── Kbd ── */
+    kbd {
+      display: inline-flex; align-items: center;
+      background: rgba(255,255,255,0.85); border: 1px solid rgba(10,10,12,0.12);
+      border-radius: 5px; padding: 1px 7px; font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; font-weight: 500; color: var(--text);
+      box-shadow: 0 1px 3px rgba(10,10,12,0.1), inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+    }
+    .badge-purple { background: rgba(136,125,255,0.12); color: #6457D6; }
+    .badge-cyan { background: rgba(167,249,255,0.3); color: #0891B2; }
+    .badge-orange { background: rgba(255,184,104,0.2); color: #C2620A; }
+    .badge-green { background: rgba(52,211,153,0.15); color: #059669; }
+
+    /* ── Tip box ── */
+    .tip {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: rgba(136,125,255,0.06); border: 1px solid rgba(136,125,255,0.15);
+      border-radius: 12px; padding: 14px 16px; margin-top: 12px;
+    }
+    .tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .tip-body { font-size: 13.5px; color: #374151; line-height: 1.65; }
+    .tip-body strong { color: var(--text); }
+
+    .warn {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: rgba(255,184,104,0.08); border: 1px solid rgba(255,184,104,0.25);
+      border-radius: 12px; padding: 14px 16px; margin-top: 12px;
+    }
+    .warn-body { font-size: 13.5px; color: #374151; line-height: 1.65; }
+
+    /* ── Code inline ── */
+    code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      background: rgba(136,125,255,0.08); color: #6457D6;
+      padding: 1px 6px; border-radius: 4px;
+    }
+
+    /* ── Code block ── */
+    .code-block {
+      background: rgba(10,10,12,0.04); border: 1px solid rgba(10,10,12,0.07);
+      border-radius: 10px; padding: 14px 18px; margin-top: 10px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      color: #374151; line-height: 1.6; white-space: pre; overflow-x: auto;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px; background: rgba(10,10,12,0.06); margin: 40px 0;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center; padding: 40px 0;
+      border-top: 1px solid rgba(10,10,12,0.06);
+      font-size: 13px; color: var(--subtle);
+    }
+    .footer a { color: var(--purple); text-decoration: none; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(136,125,255,0.25); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(136,125,255,0.45); }
+  </style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- Nav -->
+<nav class="top-nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      AI串口调试工具
+      <span class="nav-logo-badge">使用手册</span>
+    </a>
+    <a href="#connect" class="nav-link">串口连接</a>
+    <a href="#send" class="nav-link">数据发送</a>
+    <a href="#ai" class="nav-link">AI助手</a>
+    <a href="#advanced" class="nav-link">高级功能</a>
+  </div>
+</nav>
+
+<!-- Page -->
+<div class="page-wrapper">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">
+      <span class="hero-eyebrow-dot"></span>
+      MCPIOT · AI Serial Debug Tool
+    </div>
+    <h1 class="hero-title">
+      AI串口调试工具<br>
+      <span class="gradient-text">完整使用手册</span>
+    </h1>
+    <p class="hero-desc">
+      集串口通信、协议分析、TCP/UDP转发、AI智能助手于一体的专业调试工具。
+      支持 Agent 模式自主操作串口，助力嵌入式开发与设备调试。
+    </p>
+    <div class="hero-tags">
+      <span class="hero-tag">串口调试</span>
+      <span class="hero-tag">协议分析</span>
+      <span class="hero-tag">TCP/UDP转发</span>
+      <span class="hero-tag">AI Agent</span>
+      <span class="hero-tag">HEX收发</span>
+      <span class="hero-tag">多指令组</span>
+      <span class="hero-tag">帧解析</span>
+      <span class="hero-tag">文档生成</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc-card">
+    <div class="toc-title">目录</div>
+    <div class="toc-grid">
+      <a href="#overview" class="toc-item"><span class="toc-num">1</span>界面概览</a>
+      <a href="#connect" class="toc-item"><span class="toc-num">2</span>串口连接</a>
+      <a href="#display" class="toc-item"><span class="toc-num">3</span>数据显示</a>
+      <a href="#send" class="toc-item"><span class="toc-num">4</span>数据发送</a>
+      <a href="#multistring" class="toc-item"><span class="toc-num">5</span>多指令组发送</a>
+      <a href="#protocol" class="toc-item"><span class="toc-num">6</span>协议帧解析</a>
+      <a href="#tcpudp" class="toc-item"><span class="toc-num">7</span>TCP/UDP转发</a>
+      <a href="#ai" class="toc-item"><span class="toc-num">8</span>AI智能助手</a>
+      <a href="#theme" class="toc-item"><span class="toc-num">9</span>主题与语言</a>
+      <a href="#advanced" class="toc-item"><span class="toc-num">10</span>高级功能</a>
+    </div>
+  </div>
+
+  <!-- ── 1. 界面概览 ── -->
+  <section class="section" id="overview">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2 class="section-title">界面概览</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🖥️</div>整体布局</div>
+      <p>软件界面由四个主要区域组成：顶部标题栏与菜单栏、中央主显示区（含可折叠的多指令组面板）、底部控制面板，以及可选的右侧 AI 助手侧边栏。</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🔴</div>标题栏</div>
+        <p>自定义标题栏包含红/黄/绿三个窗口控制按钮，分别对应<strong>关闭 / 最小化 / 最大化</strong>窗口。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">📋</div>菜单栏</div>
+        <p>菜单栏从左到右依次为：MCPIOT、串口列表、串口配置、指令组发送、协议解析、TCP/UDP 转发、AI 服务配置、帮助，最右侧为主题切换与语言切换按钮。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">📺</div>主显示区</div>
+        <p>显示串口收发的所有数据，支持时间戳、HEX 格式查看、颜色区分收发、右键上下文菜单（复制、剪切、粘贴、发送到 AI）。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">⚙️</div>底部控制面板</div>
+        <p>包含串口参数设置、发送选项控制以及发送输入框，底部状态栏实时显示连接状态与收发字节计数。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 2. 串口连接 ── -->
+  <section class="section" id="connect">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2 class="section-title">串口连接</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🔌</div>快速连接步骤</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">在底部控制面板的<strong>端口号</strong>下拉框中选择目标串口，或点击菜单栏「串口列表」→「刷新」更新可用端口。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">设置<strong>波特率</strong>（默认 115200）、数据位（默认 8）、停止位（默认 1）、校验位（默认 None）。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">点击<strong>连接</strong>按钮建立串口连接，连接成功后按钮变灰、「断开」按钮激活，状态栏显示已连接的端口名。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">需要断开时点击<strong>断开</strong>按钮，或直接拔出设备（软件会自动检测并断开）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">⚙️</div>串口参数详解</div>
+      <table class="param-table">
+        <thead>
+          <tr><th>参数</th><th>可选值</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="param-name">波特率</span></td><td>9600 / 19200 / 38400 / 57600 / <strong>115200</strong> / 230400 / 460800 / 921600 / 1M / 1.5M / 2M</td><td>设备通信速率，须与目标设备一致</td></tr>
+          <tr><td><span class="param-name">数据位</span></td><td>5 / 6 / 7 / <strong>8</strong></td><td>每帧数据的位数，通常为 8</td></tr>
+          <tr><td><span class="param-name">停止位</span></td><td><strong>1</strong> / 2</td><td>帧结束标志位数</td></tr>
+          <tr><td><span class="param-name">校验位</span></td><td><strong>None</strong> / Even / Odd</td><td>奇偶校验方式，多数场景选 None</td></tr>
+        </tbody>
+      </table>
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <div class="tip-body">点击菜单栏「<strong>串口配置</strong>」可在弹窗中修改波特率等参数，修改后若串口已连接，需重新连接才能生效。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📋</div>串口列表菜单</div>
+      <p>点击菜单栏「串口列表」展开下拉菜单，包含「刷新」按钮与当前已检测到的所有串口设备。点击端口项可直接选中该端口填入底部端口号下拉框。</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 3. 数据显示 ── -->
+  <section class="section" id="display">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2 class="section-title">数据显示</h2>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🔢</div>HEX 显示</div>
+        <p>勾选工具栏「<strong>HEX 显示</strong>」后，接收到的数据以十六进制格式展示，同时保留 ASCII 可读字符对照，便于分析二进制协议。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🕒</div>时间戳</div>
+        <p>勾选「<strong>加时间戳</strong>」后，每条接收的数据包前会附加 <code>[HH:MM:SS.mmm]</code> 格式的时间戳，并按超时时间自动分包显示。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">💾</div>保存数据到文件</div>
+        <p>勾选「<strong>保存数据到文件</strong>」后，程序会弹出保存路径选择框，后续接收到的所有数据将实时追加写入该文件，取消勾选即停止保存。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">📌</div>窗口最前</div>
+        <p>勾选「<strong>最前</strong>」可将窗口置于所有其他应用程序之上，适合同时操作设备端终端和调试工具的场景。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🖱️</div>右键上下文菜单</div>
+      <p>在数据显示区域右键单击，可弹出上下文菜单，支持以下操作：</p>
+      <br>
+      <table class="param-table">
+        <thead><tr><th>操作</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><span class="param-name">复制</span></td><td>复制选中文本到剪贴板</td></tr>
+          <tr><td><span class="param-name">剪切</span></td><td>剪切选中文本</td></tr>
+          <tr><td><span class="param-name">粘贴</span></td><td>粘贴剪贴板内容</td></tr>
+          <tr><td><span class="param-name">全选</span></td><td>选中显示区全部内容</td></tr>
+          <tr><td><span class="param-name">发送到 AI 输入框</span></td><td>将选中文本追加到 AI 助手输入框，便于让 AI 分析串口数据</td></tr>
+          <tr><td><span class="param-name">删除</span></td><td>删除选中文本</td></tr>
+        </tbody>
+      </table>
+      <div class="tip">
+        <span class="tip-icon">✨</span>
+        <div class="tip-body">「<strong>发送到 AI 输入框</strong>」功能可将选中的协议数据直接发送给 AI 助手进行分析，是最常用的 AI 协作入口之一。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🗑️</div>清除与保存</div>
+      <p>工具栏「<strong>清除窗口</strong>」清空当前显示区域，不影响已保存到文件的数据。「<strong>发送文件</strong>」功能见下一节。</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 4. 数据发送 ── -->
+  <section class="section" id="send">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2 class="section-title">数据发送</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📤</div>发送输入框</div>
+      <p>底部发送区域的文本框用于输入要发送的内容，点击「<strong>发送</strong>」按钮或使用快捷键发送。支持多行文本输入。</p>
+      <div class="tip">
+        <span class="tip-icon">⌨️</span>
+        <div class="tip-body">在发送框中按 <kbd>Enter</kbd> 发送数据，<kbd>Shift</kbd>+<kbd>Enter</kbd> 换行输入。</div>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🔣</div>HEX 发送</div>
+        <p>勾选「<strong>HEX 发送</strong>」后，输入框中的内容以十六进制字节序列解析后发送。例如输入 <code>AA 55 01 FF</code> 会发送 4 个字节而非 ASCII 字符串。空格和换行作为分隔符，不参与发送。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">⏱️</div>定时发送</div>
+        <p>勾选「<strong>定时发送</strong>」并设置间隔（毫秒），发送框内容将按该间隔自动重复发送，直到取消勾选或点击清空为止。最小间隔 1ms，最大 10000ms。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">↩️</div>加回车换行</div>
+        <p>勾选「<strong>加回车换行</strong>」后，每次发送的数据末尾自动追加 <code>\r\n</code>（CRLF）。许多嵌入式设备的 AT 指令需要此选项。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">📁</div>发送文件</div>
+        <p>点击工具栏「<strong>发送文件</strong>」选择本地文件，文件内容将按二进制原样发送到串口。适用于固件升级、批量写入等场景。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">⏰</div>时间戳与分包显示</div>
+      <p>勾选「<strong>加时间戳和分包显示</strong>」后，可设置分包超时时间（默认 20ms）。接收到数据后若在超时时间内没有新数据到达，则将已收到的数据作为一个数据包显示，并附上时间戳头。这对于分析多包协议特别有用。</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 5. 多指令组发送 ── -->
+  <section class="section" id="multistring">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2 class="section-title">多指令组发送</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📝</div>功能介绍</div>
+      <p>多指令组发送面板（点击菜单「指令组发送」或右侧 ▶ 按钮展开）允许用户预先配置多条指令，按顺序或循环自动发送，适用于设备初始化序列、自动化测试等场景。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📊</div>指令表格字段</div>
+      <table class="param-table">
+        <thead><tr><th>字段</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><span class="param-name">HEX</span></td><td>勾选后该行以 HEX 格式发送，否则以 ASCII 文本发送</td></tr>
+          <tr><td><span class="param-name">HEX 字符串</span></td><td>输入要发送的内容。双击单元格可添加注释（斜体显示），注释不会发送</td></tr>
+          <tr><td><span class="param-name">点击发送</span></td><td>点击「发送」按钮立即发送该行数据</td></tr>
+          <tr><td><span class="param-name">顺序</span></td><td>循环发送时的执行顺序编号，数字越小越先执行</td></tr>
+          <tr><td><span class="param-name">延时 ms</span></td><td>发送该条指令后等待的毫秒数，用于控制指令间隔</td></tr>
+          <tr><td><span class="param-name">操作</span></td><td>「删除」按钮移除当前行</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🔁</div>循环发送</div>
+        <p>勾选「循环发送」后点击「发送全部」，所有行按顺序字段排列后循环执行，每行发送后等待设定的延时。点击「停止」结束循环。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">📥</div>导入 ini</div>
+        <p>点击「导入 ini」可从标准 INI 格式文件批量导入指令配置，便于团队共享和版本管理指令集合。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">↔️</div>拖动加宽</div>
+        <p>勾选「拖动加宽」后，可以拖动面板左边缘来调整多指令组面板的宽度，获得更大的输入区域。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">➕</div>添加行</div>
+        <p>点击「+ 添加」在表格底部插入新的空白指令行，可无限添加。表格内容在软件重启后自动保存和恢复。</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">🤖</span>
+      <div class="tip-body">AI 助手的 <strong>set_multi_cmds</strong> 工具可由 AI 自动生成并填写整个指令序列，只需告诉 AI 你的设备协议，它会帮你完整配置所有指令和延时参数。</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 6. 协议帧解析 ── -->
+  <section class="section" id="protocol">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <h2 class="section-title">协议帧解析</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🔬</div>实时帧解析器</div>
+      <p>点击菜单「协议解析」打开配置对话框。启用后，程序会实时检测接收数据中的完整协议帧，并按字段定义解析显示，无需手动截取数据。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📐</div>三种帧判断模式</div>
+      <table class="param-table">
+        <thead><tr><th>模式</th><th>适用场景</th><th>必填参数</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-purple">固定长度</span></td>
+            <td>每帧字节数固定，如 Modbus RTU 响应帧</td>
+            <td>帧头 + 帧总长度（字节数）</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-cyan">长度字段</span></td>
+            <td>帧内含长度字节，如自定义协议、CAN 帧</td>
+            <td>帧头 + 长度字节偏移 + 字段大小 + 长度含义</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">帧尾标识</span></td>
+            <td>以特定字节序列结束，如 AT 指令（\r\n）</td>
+            <td>帧头 + 帧尾（HEX）</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🏷️</div>字段定义语法</div>
+      <p>在「字段定义」文本框中，每行定义一个字段，格式如下：</p>
+      <div class="code-block">名称,偏移,长度,类型
+
+# 示例（自定义协议）：
+帧头,0,2,hex
+命令字,2,1,hex
+数据长度,3,1,uint8
+数据内容,4,-1,hex
+校验,-1,1,hex</div>
+      <br>
+      <table class="param-table">
+        <thead><tr><th>类型</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><span class="param-name">hex</span></td><td>以十六进制显示原始字节，如 <code>AA 55 01</code></td></tr>
+          <tr><td><span class="param-name">uint8</span></td><td>单字节无符号整数，同时显示十进制和十六进制</td></tr>
+          <tr><td><span class="param-name">uint16le</span></td><td>2 字节小端无符号整数</td></tr>
+          <tr><td><span class="param-name">uint16be</span></td><td>2 字节大端无符号整数</td></tr>
+          <tr><td><span class="param-name">ascii</span></td><td>ASCII 字符串，不可打印字符显示为 <code>.</code></td></tr>
+        </tbody>
+      </table>
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <div class="tip-body">偏移或长度填 <code>-1</code> 具有特殊含义：偏移 <code>-1</code> 表示从末尾倒数，长度 <code>-1</code> 表示取剩余所有字节。</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">🤖</span>
+      <div class="tip-body">AI 助手的 <strong>save_frame_rule</strong> 工具可以让 AI 直接为你配置解析规则。只需告诉 AI 协议格式，它会自动填写所有参数并立即生效，无需手动配置。</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 7. TCP/UDP 转发 ── -->
+  <section class="section" id="tcpudp">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <h2 class="section-title">TCP/UDP 转发</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🌐</div>功能说明</div>
+      <p>点击菜单「TCP/UDP 转发」打开配置对话框。软件可同时作为 TCP 服务器、TCP 客户端或 UDP 端点，将串口数据与网络数据双向桥接转发。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🖥️</div>TCP 服务器模式</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">设置<strong>监听端口</strong>（默认 8888），点击「启动」。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">外部 TCP 客户端（如手机 App、另一台 PC）连接到本机 IP + 该端口后，双方数据自动与串口互转。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">点击「停止」关闭服务器并断开所有连接。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📡</div>TCP 客户端模式</div>
+      <p>填入目标服务器的 IP 地址和端口号，点击「连接」主动接入远端 TCP 服务器。连接建立后串口数据与 TCP 流双向同步，断开连接点击「断开」。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📶</div>UDP 转发模式</div>
+      <p>填入本地监听端口、目标 IP 和目标端口，点击「启动」。串口接收到的数据会以 UDP 包发往目标地址；收到 UDP 数据后转发给串口。适用于无连接、低延迟的数据桥接场景。</p>
+      <div class="warn">
+        <span style="font-size:16px;flex-shrink:0">⚠️</span>
+        <div class="warn-body" style="margin-left:12px">TCP 服务器、TCP 客户端与 UDP 可<strong>同时运行</strong>，串口发出的数据会广播给所有活跃的网络端点。</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 8. AI 智能助手 ── -->
+  <section class="section" id="ai">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <h2 class="section-title">AI 智能助手</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🤖</div>打开 AI 助手</div>
+      <p>点击菜单栏最左侧「<strong>MCPIOT</strong>」按钮展开右侧 AI 助手侧边栏。再次点击可隐藏侧边栏。AI 助手支持两种服务模式，可在「AI 服务配置」中切换。</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">☁️</div>内建服务器模式</div>
+        <p>默认模式，连接 mcpiot.net 在线 AI 服务，无需任何配置，开箱即用。需要网络连接。</p>
+        <span class="badge badge-green" style="margin-top:10px;display:inline-flex">推荐</span>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🏠</div>本地模型模式</div>
+        <p>连接本地部署的 LLM（如 Ollama、LM Studio、vLLM），在「AI 服务配置」中填入 API 地址、密钥和模型名称后生效，支持离线使用。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">⚡</div>Agent 模式（自主操作）</div>
+      <p>在本地模式 AI 助手标题栏开启 <strong>Agent</strong> 开关后，AI 可自主调用工具完成复杂任务，无需用户手动操作软件。</p>
+      <br>
+      <table class="param-table">
+        <thead><tr><th>工具名称</th><th>功能</th></tr></thead>
+        <tbody>
+          <tr><td><span class="param-name">get_serial_log</span></td><td>读取当前串口接收缓冲区的文本内容</td></tr>
+          <tr><td><span class="param-name">get_raw_buffer</span></td><td>读取原始字节缓冲区（HEX），适合分析二进制协议</td></tr>
+          <tr><td><span class="param-name">send_to_serial</span></td><td>向串口发送文本或 HEX 数据</td></tr>
+          <tr><td><span class="param-name">open_serial_port</span></td><td>列出可用串口或打开指定串口（含波特率等参数）</td></tr>
+          <tr><td><span class="param-name">set_baud_rate</span></td><td>动态修改已打开串口的波特率</td></tr>
+          <tr><td><span class="param-name">timed_send</span></td><td>启动或停止定时发送任务</td></tr>
+          <tr><td><span class="param-name">get_multi_cmds</span></td><td>读取多指令组面板的所有指令</td></tr>
+          <tr><td><span class="param-name">set_multi_cmds</span></td><td>向多指令组面板批量写入 AI 生成的指令序列</td></tr>
+          <tr><td><span class="param-name">save_frame_rule</span></td><td>保存并立即应用协议帧解析规则</td></tr>
+          <tr><td><span class="param-name">get_frame_rule</span></td><td>读取当前已保存的帧解析规则</td></tr>
+          <tr><td><span class="param-name">calculate_checksum</span></td><td>计算 HEX 数据的校验值（XOR / SUM8 / CRC16-Modbus 等）</td></tr>
+          <tr><td><span class="param-name">start_tcp_server</span></td><td>启动 TCP 服务器并与串口桥接</td></tr>
+          <tr><td><span class="param-name">start_tcp_client</span></td><td>以 TCP 客户端模式连接远端服务器</td></tr>
+          <tr><td><span class="param-name">start_udp</span></td><td>启动 UDP 转发</td></tr>
+          <tr><td><span class="param-name">generate_docx</span></td><td>将分析结果生成 Word 文档并保存到本地</td></tr>
+        </tbody>
+      </table>
+      <div class="tip">
+        <span class="tip-icon">✨</span>
+        <div class="tip-body">Agent 模式最多支持 <strong>8 次工具调用迭代</strong>，AI 会自主规划并逐步完成目标，例如：自动读取串口数据 → 分析协议 → 配置解析规则 → 生成分析报告。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📋</div>AI 服务配置</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">点击菜单「<strong>AI 服务配置</strong>」打开配置对话框。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">选择「<strong>本地模型提供方配置</strong>」，填入 API 地址（如 <code>http://localhost:11434/v1/chat/completions</code>），可选填 API 密钥和模型名称。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">点击「保存」，重新打开 AI 助手侧边栏生效。</div>
+        </div>
+      </div>
+      <div class="tip">
+        <span class="tip-icon">💡</span>
+        <div class="tip-body">推荐模型：<strong>Qwen2.5-7B/14B</strong>（工具调用能力强）、<strong>Llama3</strong>、<strong>Gemma2</strong>。模型需支持 OpenAI 兼容 API 格式与 Function Calling。</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 9. 主题与语言 ── -->
+  <section class="section" id="theme">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <h2 class="section-title">主题与语言</h2>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🌙</div>深色主题 — Winglet</div>
+        <p>以深邃星空蓝 (<code>#04080F</code>) 为背景，青色荧光 (<code>#00E6FF</code>) 作为数据接收高亮，蓝紫渐变按钮，营造专业的夜间调试氛围。</p>
+        <p style="margin-top:8px">点击菜单栏右侧 <kbd>☀️</kbd> 图标切换到深色主题。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">☀️</div>浅色主题 — Prism</div>
+        <p>以雪白玻璃 (<code>#FAFAFC</code>) 为背景，棱镜渐变彩虹色装饰，毛玻璃面板效果，适合白天或明亮环境使用。</p>
+        <p style="margin-top:8px">点击菜单栏右侧 <kbd>🌙</kbd> 图标切换到浅色主题。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🇨🇳</div>中文界面</div>
+        <p>程序启动时自动检测系统语言，若系统语言为中文则默认使用中文界面，所有菜单、标签、提示文字均为中文。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🇬🇧</div>英文界面</div>
+        <p>点击菜单栏右侧 <kbd>EN</kbd> / <kbd>中</kbd> 按钮即时切换界面语言，无需重启。AI 助手面板同步切换。语言偏好自动保存。</p>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">💾</span>
+      <div class="tip-body">主题与语言设置保存在本地 <code>localStorage</code> 中，下次启动时自动恢复上次的选择。</div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── 10. 高级功能 ── -->
+  <section class="section" id="advanced">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <h2 class="section-title">高级功能与使用技巧</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🔄</div>AI 协同调试工作流</div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">连接串口，让设备发送几帧数据。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">在显示区域选中接收到的数据，右键「发送到 AI 输入框」。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">在 AI 助手输入框补充提问，如「这是一个自定义协议帧，帧头 AA 55，请分析并配置解析规则」，发送给 AI。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">AI（Agent 模式）会自动调用 <code>save_frame_rule</code> 配置解析规则，之后所有接收数据均按字段解析显示。</div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">如需生成调试报告，告诉 AI「生成一份 Word 文档总结调试结果」，AI 会调用 <code>generate_docx</code> 保存到本地。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🔢</div>校验码自动计算</div>
+        <p>在 AI 对话中直接描述协议并请求发送，AI 会自动调用 <code>calculate_checksum</code> 计算 XOR、CRC16-Modbus 等校验值，并通过 <code>send_to_serial</code> 直接发送完整帧。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">📊</div>代码块快速发送</div>
+        <p>AI 回复中的代码块（如 <code>AA 55 01 03 FF</code>）会自动提取并填入发送框，方便一键发送。发送框会自动判断内容是否为 HEX 格式。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">⚡</div>定时发送与 Agent</div>
+        <p>在 Agent 模式下可以告诉 AI「每隔 500ms 发送一次查询指令 01 03 00 01 00 01 HEX」，AI 会直接调用 <code>timed_send</code> 工具启动定时任务。</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><div class="card-icon">🌉</div>串口转网络桥接</div>
+        <p>同时开启 TCP 服务器和串口连接，可实现串口设备的网络化接入，让远程终端或移动 App 直接与串口设备通信。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">⌨️</div>常用快捷键与操作</div>
+      <table class="param-table">
+        <thead><tr><th>操作</th><th>方式</th></tr></thead>
+        <tbody>
+          <tr><td>发送数据</td><td>在发送框按 <kbd>Enter</kbd></td></tr>
+          <tr><td>发送框换行</td><td><kbd>Shift</kbd> + <kbd>Enter</kbd></td></tr>
+          <tr><td>AI 发送消息</td><td>在 AI 输入框按 <kbd>Enter</kbd></td></tr>
+          <tr><td>AI 输入框换行</td><td><kbd>Shift</kbd> + <kbd>Enter</kbd></td></tr>
+          <tr><td>复制显示区内容</td><td>选中后右键「复制」或 <kbd>Ctrl</kbd>+<kbd>C</kbd></td></tr>
+          <tr><td>发送数据到 AI</td><td>选中后右键「发送到 AI 输入框」</td></tr>
+          <tr><td>切换主题</td><td>点击菜单栏右侧 ☀️/🌙 图标</td></tr>
+          <tr><td>切换语言</td><td>点击菜单栏右侧 EN/中 按钮</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🐛</div>常见问题</div>
+      <table class="param-table">
+        <thead><tr><th>问题</th><th>解决方法</th></tr></thead>
+        <tbody>
+          <tr><td>串口列表为空</td><td>检查设备连接，点击刷新，确认 USB 驱动已安装</td></tr>
+          <tr><td>连接后无数据</td><td>检查波特率是否与设备一致，确认设备有数据输出</td></tr>
+          <tr><td>HEX 发送格式错误</td><td>确保输入为两位十六进制数，用空格分隔，如 <code>AA 55 01</code></td></tr>
+          <tr><td>AI 无法连接</td><td>检查网络，或切换为本地模型模式</td></tr>
+          <tr><td>本地模型无响应</td><td>确认 API 地址正确，模型服务已启动，模型支持 Function Calling</td></tr>
+          <tr><td>TCP 服务器启动失败</td><td>检查端口是否被占用，尝试更换端口号</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>AI串口调试工具 · MCPIOT</p>
+    <p style="margin-top:6px">访问 <a href="https://www.mcpiot.net" target="_blank">mcpiot.net</a> 获取更多资源</p>
+  </div>
+
+</div>
+
+</body>
+</html>

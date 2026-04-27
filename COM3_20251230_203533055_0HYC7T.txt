@@ -1,0 +1,4 @@
+欢迎使用串口调试工具
+[20:35:12] 已连接到 COM3
+[20:35:15] 接收: I (7312389) SystemInfo: free sram: 26871 minimal sram: 487 | free psram: 2052560 min psram: 1771548 largest psram: 1769472
+[20:35:25] 接收: I (7322389) SystemInfo: free sram: 27387 minimal sram: 487 | free psram: 2052560 min psram: 1771548 largest psram: 1769472

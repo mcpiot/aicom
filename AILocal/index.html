@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MCPIOT AI助手（本地模式）</title>
+  <script src="../AI/vue.global.js"></script>
+  <script src="i18n.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 标题栏 -->
+    <div class="ai-title-bar">
+      <div class="ai-title">{{ t('title') }}</div>
+      <label class="agent-toggle" :class="{ active: agentMode }">
+        <input type="checkbox" v-model="agentMode">
+        <span>Agent</span>
+      </label>
+    </div>
+
+    <!-- 内容区域 -->
+    <div class="ai-content-area" ref="contentArea">
+      <!-- 配置错误提示 -->
+      <div v-if="configError" class="config-error-overlay">
+        <div class="config-error-dialog">
+          <div class="config-error-title">{{ t('configErrTitle') }}</div>
+          <div class="config-error-message">{{ configError }}</div>
+          <div class="config-error-hint">{{ t('configErrHint') }}</div>
+        </div>
+      </div>
+
+      <div v-if="messages.length === 0 && !configError" class="welcome-message">
+        <div class="welcome-icon">
+          <img :src="logoUrl" alt="MCPIOT" class="welcome-logo" />
+        </div>
+        <div class="welcome-text">{{ t('welcomeText') }}</div>
+        <div class="welcome-hint" v-if="configLoaded">{{ t('connected') }}{{ localApiUrl }}</div>
+        <div class="welcome-hint" v-else>{{ t('loadingConfig') }}</div>
+      </div>
+
+      <template v-for="(message, index) in messages" :key="index">
+        <!-- 工具调用 -->
+        <div v-if="message.role === 'tool_call'" class="tool-block tool-call-block">
+          <div class="tool-block-header">
+            <span class="tool-icon">⚙</span>
+            <span class="tool-label">{{ t('toolCallLabel') }}</span>
+            <span class="tool-name">{{ message.toolName }}</span>
+          </div>
+          <pre v-if="message.content" class="tool-block-content">{{ message.content }}</pre>
+        </div>
+        <!-- 工具返回 -->
+        <div v-else-if="message.role === 'tool_result'" class="tool-block tool-result-block">
+          <div class="tool-block-header">
+            <span class="tool-icon">◀</span>
+            <span class="tool-label">{{ t('toolResultLabel') }}</span>
+            <span class="tool-name">{{ message.toolName }}</span>
+          </div>
+          <pre class="tool-block-content">{{ message.content }}</pre>
+          <button v-if="message.docPath" class="open-file-btn" @click="openFile(message.docPath)" :title="t('openDocTitle')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" fill="none"/>
+              <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+            {{ t('openDocBtn') }}
+          </button>
+        </div>
+        <!-- 普通消息 -->
+        <div v-else class="message-item" :class="message.role">
+          <div class="message-avatar">
+            <span v-if="message.role === 'user'">👤</span>
+            <img v-else :src="logoUrl" alt="MCPIOT" class="avatar-logo" />
+          </div>
+          <div class="message-content">
+            <div class="message-text" v-html="formatMessage(message.content)"></div>
+            <div class="message-footer">
+              <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+              <button class="msg-copy-btn" @click="copyMessage(message, $event)" :title="t('copyTitle')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div v-if="isLoading" class="message-item assistant">
+        <div class="message-avatar">
+          <img :src="logoUrl" alt="MCPIOT" class="avatar-logo" />
+        </div>
+        <div class="message-content">
+          <div class="loading-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="ai-input-area">
+      <div class="input-wrapper">
+        <textarea
+          v-model="inputText"
+          @keydown.enter.exact.prevent="sendMessage"
+          @keydown.shift.enter.exact="inputText += '\n'"
+          class="input-textarea"
+          :placeholder="t('placeholder')"
+          rows="3"
+        ></textarea>
+        <button
+          @click="sendMessage"
+          :disabled="isLoading || !inputText.trim() || !configLoaded"
+          class="btn-send-ai"
+          :title="t('sendTitle')"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 4L12 20M12 4L4 12M12 4L20 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
